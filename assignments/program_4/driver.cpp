@@ -7,7 +7,7 @@
 // Author:           Riley Kunkel
 // Email:            r_kunkel@hotmail.com
 // Description:
-//       Takes a group of cordinates and connects them with edges to make a graph 
+//       Takes a group of cordinates and connects them with edges to make a graph MAY TAKE HOURS TO RUN
 /////////////////////////////////////////////////////////////////////////////////
 
 // A simple representation of graph using STL
@@ -47,7 +47,6 @@ graph loadGraphCSV(string filename, string stat = "")
 	string city;
 	string state;
 	string county;
-	int max = 19000;
 
 	strMapInt cityCheck;
 
@@ -92,16 +91,11 @@ graph loadGraphCSV(string filename, string stat = "")
 				G.addVertex(city, state, lat, lon);
 				i++;
 			}
-			else if(stat == "ALL" && state != "PR") {
+			else if(stat == "ALL" && state != "PR" && state != "GU" && state != "AK") {
 				G.addVertex(city, state, lat, lon);
 				i++;
 			}
 		}
-
-		if (i > max && max != 0) {
-			return G;
-		}
-
 	}
 
 	return G;
@@ -170,48 +164,64 @@ void filterDups(string filename, string outfile)
 	}
 
 }
-// find the three closest vertices and create edges between them.
-void createSpanningTree(graph &g, string cit, int am)
-{
+
+
+void filledgeHeap(graph &g, edgeHeap &eh, int frompos) {
+	edge * e = NULL;
+	double distance;
 	latlon from;
 	latlon to;
-	double d;
-	int ln = g.searchGraphID(cit);
-
-	for (int num2 = ln; num2 <= g.vertexList.size()-2; num2++)//loop for "from"
+	for (int topos = 0; topos <= g.vertexList.size()-1; topos++)//creates edge frompos to topos 
 	{
-		edgeHeap eh;//creates heap
-		vertex b = *g.vertexList[num2];//reference for vertex from 
-		int k = b.E.size();//tracks from edges degree
-		if (k <= am-2) {//if less then 2 degree goes in to to add edges
-			for (int num1 = 0; num1 <= g.vertexList.size()-2; num1++)//loop for "to"
-			{
-				from = g.vertexList[num2]->loc;
-				to = g.vertexList[num1]->loc;
-				d = distanceEarth(from.lat, from.lon, to.lat, to.lon);
-				edge * e = NULL;
-				e = new edge(num2, num1, d); //makes edge
-				eh.Insert(e);//adds edge to heap
-			}
-			eh.Extract();//removes first shortest path which is to itself 
-			int em = 0;//tracks edges made
-			int r = 0;
-			int half = g.vertexList.size() / 2;
-			while (em <= am-1 && r < half) {
-				r++;
-				edge e = *eh.Extract();//extract next edge which is the shortest
-				int to = e.toID;//grabs to vertice id to check edge size
-				vertex a = *g.vertexList[to];//a refferences g "to" vertice
-				int z = a.E.size();
-				if (z < am-1) {// if degree is less than 3
-					g.addEdge(num2, to, (int)d, false);// add edge to graph
-					em++;// increment edges made... if vertex a over 3 will skip and not increment
-				}
-			}
+		from = g.vertexList[frompos]->loc;
+		to = g.vertexList[topos]->loc;
+		if (frompos != topos) {
+			distance = distanceEarth(from.lat, from.lon, to.lat, to.lon);
+			e = new edge(frompos, topos, distance); //makes edge
+			eh.Insert(e);//adds edge to heap
 		}
 	}
+}
+
+//creates shortest distance edges for graph g
+void addgraphEdges(graph &g, edgeHeap eh, int frompos, int edgesWanted) {
+	edge * e = NULL;
+	int edgesMade = 0;//Tracks edges made
+	int attempt = 0;//Attempt to make edge 
+	vertex v1 = *g.vertexList[frompos];
+	while (edgesMade < edgesWanted && attempt < g.vertexList.size() - 1 && v1.E.size() < edgesWanted) {//While edgesMade are one less than edgesWanted and attempt to make edge is less than vertexList
+		attempt++;
+		edge e = *eh.Extract();//Extract edge from edgeHeap  
+		vertex v = *g.vertexList[e.toID];//
+		vertex v1 = *g.vertexList[frompos];
+		if (v.E.size() < edgesWanted && v1.E.size() < edgesWanted) {// if vertex "a"'s edge degree over edgesWanted skips adding edge
+			g.addEdge(frompos, e.toID, e.weight, false);// add edge on top of heap to graph g 
+			edgesMade++;
+		}
+	}
+	delete[] e;
+}
 
 
+void createSpanningTree(graph &g, string startcity, int edgesWanted)
+{
+	edgeHeap eh;
+	
+	int ln = g.searchGraphID(startcity);//Finds startcity id
+	int frompos = 0;
+	while (frompos < g.vertexList.size()) {
+		vertex v = *g.vertexList[frompos];
+		if (v.E.size() < edgesWanted) {//if frompos vertex's degree is less than edgesWanted 
+			filledgeHeap(g, eh, frompos);
+			addgraphEdges(g, eh, frompos, edgesWanted);
+		}
+		cout << frompos << endl;
+		frompos++;
+		int k = eh.Size();
+		for (int m = 0; m < k-1; m++) {
+			eh.Extract();
+		}
+	}
 }
 
 
@@ -219,49 +229,48 @@ void createSpanningTree(graph &g, string cit, int am)
 
 // Test Driver
 //int argc, char **argv REPLACE
-int main(int argc, char **argv)
+int main()
 {
 	ofstream outfile;
 	outfile.open("graph.out");
-	int max_vertices = 18952;
-	int max_edges = 190000;
-	int am = 3;
+	int edgesWanted = 3;
 	
-	if (argc > 2) {
-		max_vertices = stoi(argv[1]);
-		max_edges = stoi(argv[2]);
-	}
-	else {
-		cout << "Usage: ./graph max_vertices max_edges" << endl;
-		exit(0);
-	}
+	//if (argc > 2) {
+	//	max_vertices = stoi(argv[1]);
+	//	max_edges = stoi(argv[2]);
+	//}
+	//else {
+	//	cout << "Usage: ./graph max_vertices max_edges" << endl;
+	//	exit(0);
+	//}
 
 
 	
 	graph G = loadGraphCSV("filtered_cities.csv", "PR");
-	createSpanningTree(G, "San Juan", am);
+	createSpanningTree(G, "San Juan", edgesWanted);
 	outfile << "San Juan, Puerto Rico" << endl;
-	outfile << G.num_edges << " edges " << G.miles << " miles";
+	outfile << G.num_edges << " edges " << G.miles << " miles" << endl;
 
-	graph G1 = loadGraphCSV("filtered_cities.csv", "ALL");
-	createSpanningTree(G1, "Lebanon", am);
-	outfile << "Lebanon, Kansas" << endl;
-	outfile << G1.num_edges << " edges" << G1.miles << " miles" << endl;
+	//graph G1 = loadGraphCSV("filtered_cities.csv", "ALL");
+	//createSpanningTree(G1, "Lebanon", edgesWanted);
+	//outfile << "Lebanon, Kansas" << endl;
+	//outfile << G1.num_edges << " edges " << G1.miles << " miles" << endl;
 
-	graph G2 = loadGraphCSV("filtered_cities.csv", "ALL");
-	createSpanningTree(G2, "Miami", am);
-	outfile << "Miami, Florida" << endl;
-	outfile << G2.num_edges << " edges" << G2.miles << " miles" << endl;
 
-	graph G3 = loadGraphCSV("filtered_cities.csv", "ALL");
-	createSpanningTree(G3, "Dallas", am);
-	outfile << "Dallas, Texas" << endl;
-	outfile << G3.num_edges << " edges" << G3.miles << " miles" << endl;
+	//graph G2 = loadGraphCSV("filtered_cities.csv", "ALL");
+	//createSpanningTree(G2, "Miami", edgesWanted);
+	//outfile << "Miami, Florida" << endl;
+	//outfile << G2.num_edges << " edges" << G2.miles << " miles" << endl;
 
-	graph G4 = loadGraphCSV("filtered_cities.csv", "ALL");
-	createSpanningTree(G4, "Boston", am);
-	outfile << "Boston, Massachusetts" << endl;
-	outfile << G4.num_edges << " edges" << G4.miles << " miles" << endl;
+	//graph G3 = loadGraphCSV("filtered_cities.csv", "ALL");
+	//createSpanningTree(G3, "Dallas", edgesWanted);
+	//outfile << "Dallas, Texas" << endl;
+	//outfile << G3.num_edges << " edges" << G3.miles << " miles" << endl;
+
+	//graph G4 = loadGraphCSV("filtered_cities.csv", "ALL");
+	//createSpanningTree(G4, "Boston", edgesWanted);
+	//outfile << "Boston, Massachusetts" << endl;
+	//outfile << G4.num_edges << " edges" << G4.miles << " miles" << endl;
 
 
 	
@@ -271,10 +280,10 @@ int main(int argc, char **argv)
 	
 	
 	//outs vertices with degree of edges
-	/*int *size = G.graphSize();
-	cout<<"V= "<<size[0]<<" E= "<<size[1]<<endl;
-	 for(int i=0;i<G.vertexList.size();i++){
-	     cout<<(*G.vertexList[i])<<endl;
-	 }*/
+	//int *size = G.graphSize();
+	//cout<<"V= "<<size[0]<<" E= "<<size[1]<<endl;
+	// for(int i=0;i<G.vertexList.size();i++){
+	//     cout<<(*G.vertexList[i])<<endl;
+	// }
 	return 0;
 }
