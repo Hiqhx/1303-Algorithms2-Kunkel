@@ -6,5 +6,5 @@
 // Author:           Riley Kunkel
 // Email:            r_kunkel@hotmail.com
 // Description:
-//       Takes a group of cordinates and connects them with edges to make a graph
+//       Takes a group of cordinates and connects them with edges to make a graph MAY TAKE HOURS TO RUN
 /////////////////////////////////////////////////////////////////////////////////
