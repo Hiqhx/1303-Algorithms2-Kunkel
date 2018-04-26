@@ -1,5 +1,6 @@
 /**
 * Riley Kunkel
+*also dont know if this is the right one will have to look at cou when i get home
 */
 
 #include <iostream>
@@ -71,6 +72,17 @@ class intLinkedList{
     }
   }
   
+  bool find(int key){
+    node* result = Find(key);
+    if(result){
+      node* temp = Head;
+      while(temp->next != result){
+        temp = temp->next;
+      }
+      return true
+    }
+    return false
+  }
   
   void Remove(int key){
     node* result = Find(key);
